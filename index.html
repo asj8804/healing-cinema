@@ -107,7 +107,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .feature .pimg img{width:100%;height:auto;display:block}
 .feature .ffoot{grid-column:1/-1;display:flex;flex-direction:column;gap:12px;padding:18px 24px 22px;border-top:1px solid var(--line)}
 .feature .ffoot .notice{margin:0}
-.feature .ffoot .btn{width:100%;padding-top:14px;padding-bottom:14px;font-size:17px}
+.feature .ffoot .acts{display:flex;gap:10px;flex-wrap:wrap}
+.feature .ffoot .acts .btn{flex:2 1 220px;padding-top:14px;padding-bottom:14px;font-size:17px}
+.feature .ffoot .acts .btn.gv{flex:1 1 180px}
+.btn.gv{text-decoration:none;text-align:center;justify-content:center;border-color:var(--gold);color:var(--gold)}
 .feature.has-poster .info{justify-content:center}
 .feature.has-poster .info h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,40px);margin:2px 0 0;letter-spacing:.01em}
 img[data-poster]:not([src]){min-height:240px;width:100%;background:linear-gradient(110deg,#1b1d3a 30%,#262949 50%,#1b1d3a 70%) 0 0/200% 100%;animation:shimmer 1.4s linear infinite}
@@ -462,8 +465,8 @@ function renderBook() {
     '<div><div class="row" style="justify-content:space-between"><span class="small muted">남은 좌석</span><b>' + f.remaining + ' / ' + f.total + '석</b></div><div class="seatbar"><i style="width:' + pct + '%"></i></div></div>' +
     '</div><div class="ffoot">' +
     '<div class="notice small">입장할 때 QR을 확인하면 <b>힐링포인트 ' + f.pointsEach + '점</b>이 쌓여요. ' + s.giftGoal + '점이 모이면 ' + esc(s.giftName) + '을(를) 드려요.</div>' +
-    (f.closed ? '<button class="btn" type="button" disabled>예매 마감</button>' : (f.remaining ? '<button class="btn primary" type="button" data-act="pick-movie" data-id="' + esc(f.id) + '">좌석 고르기</button>' : '<button class="btn" type="button" disabled>매진</button>')) +
-    '</div></article>';
+    '<div class="acts">' + (f.closed ? '<button class="btn" type="button" disabled>예매 마감</button>' : (f.remaining ? '<button class="btn primary" type="button" data-act="pick-movie" data-id="' + esc(f.id) + '">좌석 고르기</button>' : '<button class="btn" type="button" disabled>매진</button>')) +
+    gvBtn(f.gvOn === 'Y' && f.gvUrl) + '</div></div></article>';
   if (rest.length) {
     html += '<h3>다른 상영</h3><div class="minis">' + rest.map(function (m) {
       return '<button type="button" class="card mini" data-act="pick-movie" data-id="' + esc(m.id) + '"' + (m.closed || !m.remaining ? ' disabled' : '') + '>' +
@@ -563,6 +566,10 @@ function ticketHTML(t) {
     '<dl class="meta"><dt>일시</dt><dd>' + fmtWhen(mv) + '</dd><dt>장소</dt><dd>' + esc(mv.venue) + '</dd><dt>좌석</dt><dd>' + chips(t.seats) + '</dd><dt>예매자</dt><dd>' + esc(t.name) + ' · ' + esc(t.group) + ' · ' + t.count + '명</dd></dl></div>' +
     '<div class="t-stub"><div class="qr">' + (t.status === '취소' ? '<div class="qr-missing">취소됨</div>' : qrSVG('HC-' + t.code)) + '</div><div class="t-code">HC-' + esc(t.code) + '</div>' + st + '</div></div>';
 }
+function gvBtn(url) {
+  if (!url || !/^https:\/\//.test(url)) return '';
+  return '<a class="btn gv" href="' + esc(url) + '" target="_blank" rel="noopener">GV 사전 질문 남기기</a>';
+}
 function renderTicketDone() {
   var t = ST.ticket; if (!t) { ST.step = 'list'; return renderBook(); }
   view.innerHTML = '<div class="stack"><div style="text-align:center"><div class="eyebrow">예매 완료</div><h2 style="font-family:var(--display);font-weight:400;font-size:30px">예매가 끝났어요!</h2>' +
@@ -570,6 +577,7 @@ function renderTicketDone() {
     ticketHTML(t) +
     '<div class="notice" style="max-width:640px;margin:0 auto">입장할 때 안내자가 QR을 확인하면 <b>힐링포인트 ' + (t.pointsEach != null ? t.pointsEach : 20) + '점</b>이 쌓여요.</div>' +
     '<div class="row" style="justify-content:center"><button class="btn" type="button" data-tab="points">내 힐링포인트 보기</button><button class="btn ghost" type="button" data-act="to-list">처음으로</button></div>' +
+    (t.movie && t.movie.gvUrl ? '<div class="notice" style="max-width:640px;margin:0 auto;text-align:center">영화를 만든 청소년들에게 궁금한 점이 있나요?<div style="margin-top:10px">' + gvBtn(t.movie.gvUrl) + '</div></div>' : '') +
     '<div style="text-align:center"><button class="btn danger sm" type="button" data-act="cancel" data-code="' + esc(t.code) + '">잘못 예매했어요 · 예매 취소하기</button></div></div>';
 }
 
@@ -871,6 +879,10 @@ function movieEditor(body, m) {
     '<div class="grid2"><div class="field"><label for="mfHost">주최</label><input id="mfHost" name="host" value="' + f('host') + '"></div>' +
     '<div class="field"><label for="mfOrg">주관</label><input id="mfOrg" name="organizer" value="' + f('organizer') + '"></div>' +
     '<div class="field"><label for="mfSup">지원</label><input id="mfSup" name="supporter" value="' + f('supporter') + '"></div></div></div>' +
+    '<div class="card stack"><h3>관객과의 대화(GV) 사전 질문</h3>' +
+    '<label class="check"><input type="checkbox" name="gvOn" id="mfGvOn"' + (m.gvOn === 'Y' ? ' checked' : '') + '><span>예매 화면에 <b>[GV 사전 질문 남기기]</b> 버튼 보이기</span></label>' +
+    '<div class="field"><label for="mfGvUrl">질문 폼 링크 (구글폼 등, https:// 로 시작)</label><input id="mfGvUrl" name="gvUrl" inputmode="url" value="' + f('gvUrl') + '" placeholder="https://docs.google.com/forms/…"></div>' +
+    '<p class="small muted" style="margin:0">체크를 풀면 버튼만 숨겨지고 링크는 그대로 남아요. GV가 없는 상영은 체크를 풀어 두세요.</p></div>' +
     '<div class="card stack"><h3>포스터</h3>' + posterAdminHTML(m) + '</div>' +
     '<div class="card stack"><div class="row" style="justify-content:space-between"><div><h3>예매 막을 좌석</h3><p class="small muted" style="margin:0">좌석을 누르면 막힘/열림이 바뀌어요. 관계자석·장비석 등을 막아 두세요. 지금 막힌 좌석 <b id="blkCount">' + m.blocked.length + '</b>석</p></div>' +
     '<div class="row"><button class="btn sm ghost" type="button" data-act="block-s">S석 막기/풀기</button><button class="btn sm ghost" type="button" data-act="unblock-all">모두 풀기</button></div></div>' +
